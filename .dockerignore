@@ -1,0 +1,4 @@
+.git   
+*Dockerfile.client*
+*Dockerfile.server*
+node_modules/

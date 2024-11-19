@@ -1,0 +1,65 @@
+stages:
+  - build
+  - test
+  - analyze
+  - security
+
+variables:
+  DOCKER_DRIVER: overlay2
+  SONAR_PROJECT_KEY: "student-specialty-advisor"
+  SONAR_HOST_URL: "http://<sonarqube-host>:9000"
+  SONAR_TOKEN: "<your-sonarqube-token>"
+
+# 1. Build the Docker images
+build:
+  stage: build
+  script:
+    - docker-compose build
+  only:
+    - main
+
+# 2. Run unit tests
+test:
+  stage: test
+  script:
+    - docker-compose up -d
+    - docker exec server-1 npm test
+    - docker exec client-1 npm test
+  only:
+    - main
+  after_script:
+    - docker-compose down
+
+# 3. SonarQube Analysis
+sonarqube:
+  stage: analyze
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+  script:
+    - sonar-scanner
+  only:
+    - main
+
+# 4. Dependency Scanning
+dependency-track:
+  stage: analyze
+  image: dependencytrack/bom-upload
+  script:
+    - curl -O https://raw.githubusercontent.com/CycloneDX/cyclonedx-cli/main/install.sh
+    - sh install.sh -d /usr/local/bin
+    - cyclonedx-cli bom -o bom.json
+    - curl -X POST -F "bom=@bom.json" http://<dependency-track-host>:8080/api/v1/bom
+  only:
+    - main
+
+# 5. OWASP ZAP Security Testing
+owasp-zap:
+  stage: security
+  image: owasp/zap2docker-stable
+  script:
+    - zap-baseline.py -t http://localhost:8000 -r zap-report.html
+  artifacts:
+    paths:
+      - zap-report.html
+  only:
+    - main

@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile # Ensure it's pointing to the correct Dockerfile in the 'client' directory
+    ports:
+      - "3000:3000" # Expose React app on port 3000
+    environment:
+      - REACT_APP_API_URL=http://server:8000/ssa-api/ # API URL pointing to the server container
+    depends_on:
+      - server # Ensure the server is up before starting the client
+    volumes:
+      - ./client:/app # Mount client directory for live development
+    networks:
+      - app-network
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile # Ensure it's pointing to the correct Dockerfile in the 'server' directory
+    ports:
+      - "8000:8000" # Expose backend server on port 8000
+    volumes:
+      - ./server:/app # Mount server directory for live development
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+sonarqube:
+  image: sonarqube:latest
+  container_name: sonarqube
+  ports:
+    - "9000:9000"
+  environment:
+    - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
